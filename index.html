@@ -1120,6 +1120,7 @@ window.finishOnboard = async () => {
   userProfile = data;
   document.getElementById('nav').style.display = 'flex';
   navigate('home');
+  setTimeout(() => requestNotifPermission(userProfile.nome), 1500);
 };
 
 // ═══════════════════════════════════════
@@ -1153,18 +1154,54 @@ onAuthStateChanged(auth, async (user) => {
   waterGlasses = await loadWater(user.uid);
 
   if(!userProfile?.peso) {
-    // Precisa completar onboarding
     document.getElementById('nav').style.display = 'none';
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('screen-onboard').classList.add('active');
   } else {
     document.getElementById('nav').style.display = 'flex';
     navigate('home');
+    // Pedir permissão de notificação após login
+    setTimeout(() => requestNotifPermission(userProfile.nome), 1500);
   }
 });
 
-if('serviceWorker' in navigator)
-  window.addEventListener('load',()=>navigator.serviceWorker.register('/nutrik/sw.js').catch(()=>{}));
+// ── SERVICE WORKER + NOTIFICAÇÕES ──
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/nutrik/sw.js');
+      window._swReg = reg;
+    } catch(e) {}
+  });
+}
+
+async function requestNotifPermission(nome) {
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted') {
+    scheduleNotifs(nome);
+    return;
+  }
+  if(Notification.permission !== 'denied') {
+    const perm = await Notification.requestPermission();
+    if(perm === 'granted') {
+      scheduleNotifs(nome);
+      showToast('✅ Notificações ativadas!');
+    }
+  }
+}
+
+function scheduleNotifs(nome) {
+  if(navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SCHEDULE_NOTIFS',
+      payload: { nome }
+    });
+  } else {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.active?.postMessage({ type: 'SCHEDULE_NOTIFS', payload: { nome } });
+    });
+  }
+}
 </script>
 </body>
 </html>
