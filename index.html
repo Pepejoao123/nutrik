@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Nutri.k">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <title>Nutri.k</title>
 <style>
@@ -192,7 +193,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div id="auth-login">
       <div class="input-group"><label>E-mail</label><input id="login-email" type="email" placeholder="seu@email.com" autocomplete="email"></div>
-      <div class="input-group"><label>Senha</label><input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="input-group"><label>Senha</label><div style="position:relative"><input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:48px"><button type="button" onclick="togglePass('login-pass','eye-login')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:auto;padding:0" id="eye-login">👁️</button></div></div>
       <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
       <div style="text-align:center;margin-top:12px">
         <span style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline" onclick="doResetPassword()">Esqueci minha senha</span>
@@ -201,7 +202,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div id="auth-register" style="display:none">
       <div class="input-group"><label>Nome</label><input id="reg-nome" type="text" placeholder="Seu nome"></div>
       <div class="input-group"><label>E-mail</label><input id="reg-email" type="email" placeholder="seu@email.com" autocomplete="email"></div>
-      <div class="input-group"><label>Senha</label><input id="reg-pass" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="input-group"><label>Senha</label>
+        <div style="position:relative">
+          <input id="reg-pass" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password" style="padding-right:48px">
+          <button type="button" onclick="togglePass('reg-pass','eye-reg')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:auto;padding:0" id="eye-reg">👁️</button>
+        </div>
+      </div>
+      <div class="input-group"><label>Confirmar senha</label>
+        <div style="position:relative">
+          <input id="reg-pass2" type="password" placeholder="repita a senha" autocomplete="new-password" style="padding-right:48px">
+          <button type="button" onclick="togglePass('reg-pass2','eye-reg2')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;width:auto;padding:0" id="eye-reg2">👁️</button>
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="doRegister()">Criar conta</button>
     </div>
   </div>
@@ -659,15 +671,34 @@ window.doRegister = async () => {
   const nome = document.getElementById('reg-nome').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
-  if(!nome||!email||!pass){showToast('Preencha todos os campos');return}
+  const pass2 = document.getElementById('reg-pass2').value;
+  if(!nome||!email||!pass||!pass2){showToast('Preencha todos os campos');return}
   if(pass.length<6){showToast('Senha mínimo 6 caracteres');return}
+  if(pass !== pass2){showToast('As senhas não coincidem ❌');return}
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db,'users',cred.user.uid),{nome, email, createdAt:serverTimestamp()});
     showToast('Conta criada! Bem-vindo(a) '+nome+' 🎉');
   } catch(e) {
-    const msgs = {'auth/email-already-in-use':'E-mail já cadastrado','auth/weak-password':'Senha muito fraca'};
-    showToast(msgs[e.code]||'Erro ao criar conta');
+    const msgs = {
+      'auth/email-already-in-use':'E-mail já cadastrado',
+      'auth/weak-password':'Senha muito fraca',
+      'auth/invalid-email':'E-mail inválido',
+      'auth/network-request-failed':'Erro de conexão. Verifique sua internet.',
+    };
+    showToast(msgs[e.code]||'Erro: '+e.code);
+  }
+};
+
+window.togglePass = (inputId, btnId) => {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if(input.type === 'password'){
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
   }
 };
 
